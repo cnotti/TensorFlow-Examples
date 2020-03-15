@@ -50,4 +50,5 @@ def run():
   plt.ylim(0, 2)
   plt.savefig('plot.png')
 
-run()
+if __name__ == "__main__":
+  run()
