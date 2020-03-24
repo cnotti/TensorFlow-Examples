@@ -3,11 +3,12 @@
 NLP using Python: 
     
     Word tokenization:
+        Tokenization using keras Tokenizer
         
     Word Embeddings:
-        Learn within model
-        Pre-learn with word2vec routine
-        Load external embeddings
+        Learn encoding within model
+        Pre-learn with a word2vec routine
+        Use external embeddings
         
 """
 
@@ -80,33 +81,52 @@ train_set_clean['review'] = clean_text(train_set['review'])
 test_set_clean = test_set.copy() 
 test_set_clean['review'] = clean_text(test_set['review'])
 
+# Summarize number of words
+print("Number of words: ")
+print(len(np.unique(np.hstack(test_set_clean['review'].values))))
+
+a= np.unique(np.hstack(test_set_clean['review'].values))
+len(a)
 
 # ------------------------------------------ Tokenize and pad cleaned text
-tokenize_obj = Tokenizer(oov_token = True)
-tokenize_obj.fit_on_texts(train_set_clean['review'])
+# get max sentance length and size of vocab
+#max_length = max([len(sen.split()) for sen in train_set_clean['review']])
+max_length = 250
+
+# create tokenizer obj
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(train_set_clean['review'])
+
+# remove words with count < n from vocab
+low_count_words = [w for w,c in tokenizer.word_counts.items() if c < 15]
+tokenizer.texts_to_sequences(train_set_clean['review'])
+for w in low_count_words:
+    del tokenizer.word_index[w]
+    del tokenizer.word_docs[w]
+    del tokenizer.word_counts[w]
+
+word_mat = tokenizer.texts_to_matrix(train_set_clean['review'], mode='count')
+vocab_size = word_mat.shape[1]
+
 
 # tokenize
-train_tokens = tokenize_obj.texts_to_sequences(train_set_clean['review'])
-test_tokens = tokenize_obj.texts_to_sequences(test_set_clean['review'])
+train_tokens = tokenizer.texts_to_sequences(train_set_clean['review'].values)
+test_tokens = tokenizer.texts_to_sequences(test_set_clean['review'].values)
 
-# get max sentance length and size of vocab
-max_length = max([len(sen.split()) for sen in train_set_clean['review']])
-vocab_size = len(tokenize_obj.word_index) + 1
-
-# create x by padding tokenized vectors
+# create x by padding and truncating tokenized vectors
 x_train = pad_sequences(train_tokens, maxlen = max_length, padding = "post")
 x_test = pad_sequences(test_tokens, maxlen = max_length, padding = "post")
 
 
-# ------------------------------------------ learnt embedding
+# ------------------------------------------ example: learnt embedding
 # hyperparameters
-embedding_dim = 50
-gru_units = 32
+embedding_dim = 128
+gru_units = 16
 gru_dropout = 0.2
 gru_recurrent_dropout = 0.2
 
-batch_size = 32
-epochs = 5
+batch_size = 128
+epochs = 10
 
 # model
 model = Sequential()
@@ -114,7 +134,7 @@ model.add(Embedding(input_dim = vocab_size,
                     output_dim = embedding_dim, 
                     input_length = max_length))
 model.add(GRU(units = gru_units,
-              dropout = gru_dropout ,
+              dropout = gru_dropout,
               recurrent_dropout = gru_recurrent_dropout))
 model.add(Dense(1, activation='sigmoid'))
 
@@ -122,9 +142,50 @@ model.compile(loss = "binary_crossentropy",
               optimizer = "adam",
               metrics = ["accuracy"])
 
-#y_train = train_set['sentiment'].values
 model.fit(x_train, 
           y_train, 
           batch_size = batch_size, 
-          epochs = epochs)
-# ------------------------------------------
+          epochs = epochs,
+          validation_data=(x_test, y_test))
+
+
+# ------------------------------------------ example: pre-trained embedding
+# load pretrained GLoVE embeddings (400K 50d word vectors)
+embeddings_dictionary = dict()
+glove_file = open('C:/Users/Chris/Documents/TensorFlow-Examples-Python/text_encoding/glove.6B.50d.txt', encoding="utf8")
+# store
+for line in glove_file:
+    records = line.split()
+    word = records[0]
+    vector_dimensions = np.asarray(records[1:], dtype='float32')
+    embeddings_dictionary [word] = vector_dimensions
+glove_file.close()
+
+# store embeddings for words in corpus
+embedding_matrix = np.zeros((vocab_size, 50))
+for word, index in tokenizer.word_index.items():
+    embedding_vector = embeddings_dictionary.get(word)
+    if embedding_vector is not None:
+        embedding_matrix[index] = embedding_vector
+
+# model
+model = Sequential()
+model.add(Embedding(input_dim = vocab_size, 
+                    output_dim = 50, 
+                    weights = [embedding_matrix], 
+                    input_length = max_length, 
+                    trainable = False))
+model.add(GRU(units = gru_units,
+              dropout = gru_dropout,
+              recurrent_dropout = gru_recurrent_dropout))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(loss = "binary_crossentropy",
+              optimizer = "adam",
+              metrics = ["accuracy"])
+
+model.fit(x_train, 
+          y_train, 
+          batch_size = batch_size, 
+          epochs = epochs,
+          validation_data=(x_test, y_test))
