@@ -81,12 +81,6 @@ train_set_clean['review'] = clean_text(train_set['review'])
 test_set_clean = test_set.copy() 
 test_set_clean['review'] = clean_text(test_set['review'])
 
-# Summarize number of words
-print("Number of words: ")
-print(len(np.unique(np.hstack(test_set_clean['review'].values))))
-
-a= np.unique(np.hstack(test_set_clean['review'].values))
-len(a)
 
 # ------------------------------------------ Tokenize and pad cleaned text
 # get max sentance length and size of vocab
