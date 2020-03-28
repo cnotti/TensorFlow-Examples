@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import random
 import re
+import tensorflow as tf
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -34,7 +35,7 @@ from tensorflow.keras.layers import Embedding
 
 # ------------------------------------------ Define the text corpus
 # read data from csv
-movie_reviews = pd.read_csv("C:/Users/Chris/Documents/TensorFlow-Examples-Python/text_encoding/IMDB Dataset.csv")
+movie_reviews = pd.read_csv("C:/Users/Chris/Documents/TensorFlow-Examples-Python/data/IMDB Dataset.csv")
 
 # inspect data obj
 movie_reviews.info()
@@ -146,7 +147,7 @@ model.fit(x_train,
 # ------------------------------------------ example: pre-trained embedding
 # load pretrained GLoVE embeddings (400K 50d word vectors)
 embeddings_dictionary = dict()
-glove_file = open('C:/Users/Chris/Documents/TensorFlow-Examples-Python/text_encoding/glove.6B.50d.txt', encoding="utf8")
+glove_file = open('C:/Users/Chris/Documents/TensorFlow-Examples-Python/data/glove.6B.50d.txt', encoding="utf8")
 # store
 for line in glove_file:
     records = line.split()
